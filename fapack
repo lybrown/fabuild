@@ -1,0 +1,72 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+use Carp;
+use Getopt::Long;
+
+sub at {
+    my ($s) = @_;
+    #$s =~ tr/\12\11/\233\177/;
+    my @x = unpack "C".length $s, $s;
+    for (@x) {
+        if ($_ < 32) {
+            $_ -= 64;
+        } elsif ($_ < 96) {
+            $_ -= 32;
+        }
+    }
+    return @x;
+}
+
+sub hs {
+    my ($s) = @_;
+    my @x = ($s =~ m/(..)/g);
+    return map hex, @x;
+}
+
+sub fapack {
+    my ($o, $file) = @_;
+    open my $fh, $file or croak "ERROR: Cannot open $file: $!\n";
+    read $fh, my $data, 1<<16;
+    my @bytes = unpack "C".length $data, $data;
+    splice @bytes, 0, $o->{off} if $o->{off};
+    my @rle = $o->{type} eq "map" ? (
+        at(" a./01*+,-#'?st"),
+        hs("41444858595AD8"),
+        0x47+128
+    ) : hs("0055AAFF");
+    my %rle = map { $_ => 1 } @rle;
+    while (defined (my $byte = shift @bytes)) {
+        if ($rle{$byte}) {
+            my $len = 0;
+            ++$len while ($bytes[$len]//-1) == $byte;
+            splice @bytes, 0, $len;
+            ++$len;
+            while ($len > 255) {
+                print pack "CC", $byte, 0;
+                $len -= 256;
+            }
+            warn "WTF: $len\n" if $len > 255 or $len < 0;
+            print pack "CC", $byte, $len if $len;
+        } else {
+            print pack "C", $byte;
+        }
+    }
+}
+
+sub usage {
+    die "fapack -type [map|scan] LEVEL.DAT\n";
+}
+
+sub main {
+    my @opt = (
+        "type=s",
+        "off=i",
+        "h|help!",
+    );
+    my %o = (type => "map");
+    GetOptions(\%o, @opt) or usage();
+    fapack(\%o, @ARGV);
+}
+
+main();

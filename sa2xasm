@@ -1,0 +1,60 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+sub convert {
+    my $in = " " x 8;
+    my $prevlabel = "";
+    while(<>) {
+        s/H1:FORT4/H1:FORT6/ or s/H1:FORT6/H1:FORT4/; # Move code around
+        s/^\d+ ?//;
+        s/^\s*\*/; */;
+        s/\.EQ/equ/;
+        s/^\s*\.LI/; .LI/;
+        s/^\s*\.OR/${in}org/;
+        s/\.BS\s+/org *+/;
+        s/^\s*org/${in}org/;
+        s/^\s*\.IN/${in}icl/;
+        s/^\s*\.TF/; .TF/;
+        s{^\s*\.A([TS])\s*(-?)(["/])(.+)\3}{
+            my$t=$1 eq "T" ? "d" : "c";
+            my$s=$2 ? "*" : "";
+            my$x=$4;$x=~s/"/"$s,$t'"'$s,$t"/g;
+            qq/${in}dta $t"$x"$s/
+        }e;
+        s/,[cd]""\*?//;
+        s/(\w)\.(?=\w)/${1}_/g;
+        s{^\s*\.DA\s+?(\S+)}{
+            my@x=split/\s*,\s*/,$1;
+            "${in}dta " . join ",", map "a($_)", @x
+        }e;
+        s{\s*\.HS\s+(\S+)}{
+            my@x=($1=~/(..)/g);
+            "${in}dta " . join ",", map "\$$_", @x
+        }e;
+        s/a\(#(.*?)\)/<$1/g;
+        s/H1:(\w+)_S/\L$1.asm/;
+        s/H1:(\w+)_OBJ/\L$1.obj/;
+        /^(\w+)/ and $prevlabel = $1;
+        s/(^|\s)\.(\d+)/${1}${prevlabel}_$2/g;
+        s{ /(\w+)}{ >$1};
+        s/(ASL|LSR|ROR|ROL)\s*$/$1 @\n/;
+        s/BLT/BCC/;
+        s/BGE/BCS/;
+        s/ #/ </g;
+        s/FNT2_S.*/FNT2 equ *+8/; # Fix typo in source?
+        #s/org PROGRAM/org PROGRAM-11 ; Jury-rig -11 bytes/;
+        s/dta \$12$/rts ; defeat checksum protection ; dta \$12/;
+        s/^/;/ if /DO_CHECKSUM3_1/ .. /defeat/;
+        s/^/;/ if /BNE DO_CHECKSUM2_4/ .. /BEQ/;
+        print;
+        print "    mva:nop #\$3C \$D302\n" if /BEQ DO_CHECKSUM2_3/;
+        print "    ert [*^DSP_LST$1]&\$F000\n" if /41,a\(DSP_LST([23])/;
+    }
+}
+
+sub main {
+    convert();
+}
+
+main();
