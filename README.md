@@ -31,6 +31,14 @@ car.asm is a dissassebly of the cart on Atarionline.pl using dis with car.dop.
 car.dop was derived from the labels file from xasm. It's clear that the cart's
 code is reordered vs. the source published by Steve Hale.
 
+## Versions
+
+fa-N.car is based on LEVEL.1N and LEVEL.2N which Steve says are the release
+versions of the maps.
+
+fa-P.car is based on LEVEL.1P and LEVEL.2P which Steve says are the pre-release
+maps.
+
 ## Links
 
 - http://atariage.com/forums/topic/239792-fort-apocalypse-source-code-is-out/
